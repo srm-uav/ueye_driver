@@ -1,0 +1,5 @@
+Simple uEye Driver for UI-3880-CP
+---------------------------------
+
+To compile:
+    $ gcc -Wall main.c driver.c -lueye_api -o ueye_driver

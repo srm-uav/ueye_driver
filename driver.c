@@ -60,7 +60,35 @@ int init_cam(Camera *c) {
 }
 
 int capture_cam(Camera *c) {
-	return 0;
+	/* XXX: for now, the path is hardcoded to a file in the cwd of the process */
+
+	int r;
+	r = is_SetDisplayMode(c->hid, IS_SET_DM_DIB);
+	if (r != IS_SUCCESS) {
+		fprintf(stderr, "[%s] Failed at step: SetDisplayMode with error %d\n", __func__, r);
+		return r;
+	}
+
+	r = is_FreezeVideo(c->hid, IS_WAIT);
+	if (r != IS_SUCCESS) {
+		fprintf(stderr, "[%s] Failed at step: FreezeVideo with error %d\n", __func__, r);
+		return r;
+	}
+
+	IMAGE_FILE_PARAMS i;
+	memset(&i, 0, sizeof(i));
+
+	i.pwchFileName = L"./capture.png";
+	i.nFileType = IS_IMG_PNG;
+	i.ppcImageMem = c->img_mem;
+	i.pnImageID = c->img_id;
+
+	r = is_ImageFile(c->hid, IS_IMAGE_FILE_CMD_SAVE, &i, sizeof(i));
+	if (r != IS_SUCCESS) {
+		fprintf(stderr, "[%s] Failed at step: ImageFile with error %d\n", __func__, r);
+	}
+
+	return r;
 }
 
 int unref_cam(Camera *c) {

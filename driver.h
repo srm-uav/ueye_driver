@@ -1,4 +1,4 @@
-#include <uEye.h>
+#include <ueye.h>
 
 struct Camera {
 	unsigned int ref;

@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include <uEye.h>
 
 #include "driver.h"
 

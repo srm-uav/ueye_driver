@@ -59,6 +59,28 @@ int init_cam(Camera *c) {
 	return r = IS_SUCCESS;
 }
 
-int capture_cam(Camera *c);
+int capture_cam(Camera *c) {
+	return 0;
+}
 
-int unref_cam(Camera *c);
+int unref_cam(Camera *c) {
+	if (!(--c->ref)) {
+		fprintf(stderr, "Refcount dropped to zero, freeing object...\n")
+
+		int r;
+		r = is_FreeImageMem(c->hid, c->img_mem, c->img_id);
+		if (r != IS_SUCESS) {
+			fprintf(stderr, "[%s] Failed at step: FreeImageMem with error %d\n", __func__, r);
+			return r;
+		}
+
+		r = is_ExitCamera(c->hid);
+		if (r != IS_SUCCESS) {
+			fprintf(stderr, "[%s] Failed at step: ExitCamera with error %d\n", __func__, r);
+			return r;
+		}
+		fprintf ("Disconnected camera %s with HID %d\n", c->name, c->hid);
+		free(c->name);
+	}
+	return 0;
+}

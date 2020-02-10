@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "driver.h"
@@ -18,7 +19,7 @@ int init_cam(Camera *c) {
 	fprintf(stderr, "Connected to camera %d\n", hid);
 
 	SENSORINFO s;
-	r = is_GetSensorInfo(&hid, &s);
+	r = is_GetSensorInfo(hid, &s);
 	if (r != IS_SUCCESS) {
 		fprintf(stderr, "[%s] Failed at step: GetSensorInfo with error %d\n", __func__, r);
 		return r;
@@ -32,8 +33,8 @@ int init_cam(Camera *c) {
 
 	char *img_mem;
 	INT img_id;
-	DWORD width = s->nMaxWidth;
-	DWORD height = s->nMaxHeight;
+	DWORD width = s.nMaxWidth;
+	DWORD height = s.nMaxHeight;
 	r = is_AllocImageMem(hid, width, height, 16, &img_mem, &img_id);
 	if (r != IS_SUCCESS) {
 		fprintf(stderr, "[%s] Failed at step: AllocImageMem with error %d\n", __func__, r);
@@ -47,7 +48,7 @@ int init_cam(Camera *c) {
 	}
 
 	c->ref++;
-	c->name = strdup(s->strSensorName);
+	c->name = strdup(s.strSensorName);
 	c->hid = hid;
 	c->width = width;
 	c->height = height;
@@ -58,7 +59,7 @@ int init_cam(Camera *c) {
 	return r = IS_SUCCESS;
 }
 
-int capture_cam(Camera *c) {
+int capture_img(Camera *c) {
 	/* XXX: for now, the path is hardcoded to a file in the cwd of the process */
 
 	int r;
@@ -79,8 +80,8 @@ int capture_cam(Camera *c) {
 
 	i.pwchFileName = L"./capture.png";
 	i.nFileType = IS_IMG_PNG;
-	i.ppcImageMem = c->img_mem;
-	i.pnImageID = c->img_id;
+	i.ppcImageMem = &c->img_mem;
+	i.pnImageID = &c->img_id;
 
 	r = is_ImageFile(c->hid, IS_IMAGE_FILE_CMD_SAVE, &i, sizeof(i));
 	if (r != IS_SUCCESS) {
@@ -92,11 +93,11 @@ int capture_cam(Camera *c) {
 
 int unref_cam(Camera *c) {
 	if (!(--c->ref)) {
-		fprintf(stderr, "Refcount dropped to zero, freeing object...\n")
+		fprintf(stderr, "Refcount dropped to zero, freeing object...\n");
 
 		int r;
 		r = is_FreeImageMem(c->hid, c->img_mem, c->img_id);
-		if (r != IS_SUCESS) {
+		if (r != IS_SUCCESS) {
 			fprintf(stderr, "[%s] Failed at step: FreeImageMem with error %d\n", __func__, r);
 			return r;
 		}
@@ -106,7 +107,7 @@ int unref_cam(Camera *c) {
 			fprintf(stderr, "[%s] Failed at step: ExitCamera with error %d\n", __func__, r);
 			return r;
 		}
-		fprintf ("Disconnected camera %s with HID %d\n", c->name, c->hid);
+		fprintf (stderr, "Disconnected camera %s with HID %d\n", c->name, c->hid);
 		free(c->name);
 	}
 	return 0;

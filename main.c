@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
 
 #include "driver.h"
 
@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 		goto end;
 	}
 
-	r = capture_cam(&c);
+	r = capture_img(&c);
 	if (r != IS_SUCCESS) {
 		fprintf(stderr, "Error: Failed to capture image\n");
 		goto end;

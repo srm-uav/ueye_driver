@@ -37,11 +37,17 @@ int main(int argc, char *argv[]) {
 	r = capture_img(&c);
 	if (r != IS_SUCCESS) {
 		log_error("Error: Failed to capture image");
-		goto end;
+		goto end_unref;
 	}
 
-	r = unref_cam(&c);
+	r = stream_loop(&c);
+	if (r < 0) {
+		log_error("Failed to transmit frames to server");
+		goto end_unref;
+	}
 
+end_unref:
+	unref_cam(&c);
 end:
 	return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }

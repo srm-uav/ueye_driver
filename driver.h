@@ -16,4 +16,6 @@ int init_cam(Camera *c);
 
 int capture_img(Camera *c);
 
-int unref_cam(Camera *c);
+int stream_loop(Camera *c);
+
+void unref_cam(Camera *c);

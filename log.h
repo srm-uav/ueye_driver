@@ -33,6 +33,9 @@ enum log_level {
 };
 
 #define LOG_DEBUG 1
+#define LOG_BUF_SIZE 2048U
+
+char log_buf[LOG_BUF_SIZE];
 
 static char* log_level_to_str[_LOG_LEVEL_MAX] = {
 	[LOG_INFO] = "info",

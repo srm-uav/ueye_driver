@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <string.h>
 
 #include "driver.h"
 #include "log.h"
@@ -15,8 +16,9 @@ int main(int argc, char *argv[]) {
 		log_warn("Failed to lock pages in memory, ignoring: %m");
 	}
 
+	memset(log_buf, 0, LOG_BUF_SIZE);
 	r = setvbuf(stderr, log_buf, _IOFBF, LOG_BUF_SIZE);
-	if (!r) {
+	if (r) {
 		log_warn("Failed to set full buffering, ignoring: %m");
 	}
 

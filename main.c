@@ -6,20 +6,20 @@
 int main(int argc, char *argv[]) {
 	int r;
 	if (argc > 1) {
-		fprintf(stderr, "Program takes no arguments\n");
+		log_error("Program takes no arguments");
 		return EXIT_FAILURE;
 	}
 
 	Camera c;
 	r = init_cam(&c);
 	if (r != IS_SUCCESS) {
-		fprintf(stderr, "Error: Failed to initialize camera\n");
+		log_error("Error: Failed to initialize camera");
 		goto end;
 	}
 
 	r = capture_img(&c);
 	if (r != IS_SUCCESS) {
-		fprintf(stderr, "Error: Failed to capture image\n");
+		log_error("Error: Failed to capture image");
 		goto end;
 	}
 

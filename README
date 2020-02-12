@@ -1,5 +1,8 @@
 Simple uEye Driver for UI-3880-CP
 ---------------------------------
 
-To compile:
+To compile client:
     $ gcc -Wall main.c driver.c -lueye_api -o ueye_driver
+
+To compile server:
+    $ gcc -Wall server/main.c -o ueye_server

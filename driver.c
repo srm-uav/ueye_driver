@@ -36,7 +36,7 @@ int init_cam(Camera *c) {
 	INT img_id;
 	DWORD width = s.nMaxWidth;
 	DWORD height = s.nMaxHeight;
-	r = is_AllocImageMem(hid, width, height, 16, &img_mem, &img_id);
+	r = is_AllocImageMem(hid, width, height, 24, &img_mem, &img_id);
 	if (r != IS_SUCCESS) {
 		log_error("Failed at step: AllocImageMem with error %d", r);
 		return r;
@@ -91,6 +91,20 @@ int capture_img(Camera *c) {
 	}
 
 	return r;
+}
+
+int stream_loop(Camera *c) {
+	int r;
+
+	int fd = socket(AF_INET, SOCK_STREAM, 0);
+
+	r = is_SetImageMem(c->hid, c->img_mem, c->img_id);
+	r = is_GetImageMemPitch(c->hid, &lineinc);
+	size_t size = lineinc * c->height;
+	for (;;) {
+		r = is_CaptureVideo(c->hid, IS_WAIT);
+		r = write(fd, c->img_mem, size);
+	}
 }
 
 void unref_cam(Camera *c) {

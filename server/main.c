@@ -17,7 +17,7 @@ typedef union sockaddr_union {
 
 typedef struct event_source {
 	int fd;
-	void (*callback)(void *userdata);
+	void (*cb)(void *userdata);
 } source_t;
 
 static int epfd;
@@ -58,7 +58,11 @@ end:
 
 void read_frame(void *ptr) {
 	int fd = *((int *) ptr);
-	/* TODO */
+	char buf[5];
+	int r;
+	do {
+		r = read(fd, buf, 5);
+	} while (r > 0);
 	return;
 }
 
@@ -73,8 +77,8 @@ void accept_conn(void *ptr) {
 		return;
 	}
 	source_t *c = malloc(sizeof(source_t));
-	*c = (source_t) { .fd = cfd, .callback = &read_frame };
-	struct epoll_event ev = { .events = EPOLLIN, .data.ptr = &c };
+	*c = (source_t) { .fd = cfd, .cb = &read_frame };
+	struct epoll_event ev = { .events = EPOLLIN, .data.ptr = c };
 
 	r = epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev);
 	if (r < 0) {
@@ -95,8 +99,8 @@ int main(int argc, char *argv[]) {
 	epfd = epoll_create1(EPOLL_CLOEXEC);
 
 	source_t *a = malloc(sizeof(source_t));
-	*a = (source_t) { .fd = sockfd, .callback = &accept_conn };
-	struct epoll_event ev = { .events = EPOLLIN, .data.ptr = &a };
+	*a = (source_t) { .fd = sockfd, .cb = &accept_conn };
+	struct epoll_event ev = { .events = EPOLLIN, .data.ptr = a };
 
 	r = epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev);
 	if (r < 0) {
@@ -115,8 +119,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		for (int i = 0; i < r; ++i) {
-			source_t *s = (source_t *) events[0].data.ptr;
-			s->callback(&s->fd);
+			source_t *s = events[i].data.ptr;
+			s->cb(&s->fd);
 		}
 	}
 

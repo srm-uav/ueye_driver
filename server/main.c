@@ -57,12 +57,20 @@ end:
 
 
 void read_frame(void *ptr) {
-	int fd = *((int *) ptr);
-	char buf[5];
 	int r;
+	/* example code */
+	int fd = *((int *) ptr);
+	char *buf; /* TODO: size must be sync'd with client */
+	size_t size = 64;
+	buf = malloc(size*sizeof(char));
+	r = 0;
 	do {
-		r = read(fd, buf, 5);
-	} while (r > 0);
+		buf = buf + r;
+		r = read(fd, buf, size);
+		size = size - r;
+	} while (size);
+
+	/* create frame */
 	return;
 }
 
@@ -78,7 +86,7 @@ void accept_conn(void *ptr) {
 	}
 	source_t *c = malloc(sizeof(source_t));
 	*c = (source_t) { .fd = cfd, .cb = &read_frame };
-	struct epoll_event ev = { .events = EPOLLIN, .data.ptr = c };
+	struct epoll_event ev = { .events = EPOLLIN|EPOLLHUP, .data.ptr = c };
 
 	r = epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev);
 	if (r < 0) {

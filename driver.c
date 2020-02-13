@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netdb.h>
 
 #include "driver.h"
 #include "log.h"
@@ -97,14 +102,59 @@ int stream_loop(Camera *c) {
 	int r;
 
 	int fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (fd < 0) {
+		log_error("Failed to create client socket: %m");
+		goto end_r;
+	}
+	/* TODO: switch to generic funcs */
+	struct sockaddr_in server;
+	struct hostent *serv_addr;
+
+	server.sin_family = AF_INET;
+	server.sin_port = htons(6969);
+	serv_addr = gethostbyname("localhost");
+
+	memcpy(&server.sin_addr.s_addr, serv_addr->h_addr, serv_addr->h_length);
+	r = connect(fd, (struct sockaddr *) &server, sizeof(server));
+	if (r < 0) {
+		log_error("Failed to establish connection to server: %m");
+		goto end;
+	}
 
 	r = is_SetImageMem(c->hid, c->img_mem, c->img_id);
+	if (r != IS_SUCCESS) {
+		log_error("Failed at step SetImageMem with error %d", r);
+		goto end;
+	}
+
+	INT lineinc;
 	r = is_GetImageMemPitch(c->hid, &lineinc);
+	if (r != IS_SUCCESS) {
+		log_error("Failed at step GetImageMemPitch with error %d", r);
+		goto end;
+	}
+
 	size_t size = lineinc * c->height;
+
 	for (;;) {
 		r = is_CaptureVideo(c->hid, IS_WAIT);
+		if (r != IS_SUCCESS) {
+			log_error("Failed at step CaptureVideo with error %d", r);
+			goto end;
+		}
 		r = write(fd, c->img_mem, size);
+		if (r < 0) {
+			if (errno == EAGAIN)
+				continue;
+			log_error("Failed to transmit buffer: %m");
+			goto end;
+		}
 	}
+
+end:
+	close(fd);
+end_r:
+	return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 void unref_cam(Camera *c) {

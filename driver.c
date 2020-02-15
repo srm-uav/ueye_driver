@@ -1,6 +1,9 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -167,18 +170,18 @@ static int setup_worker(Camera *c, int *writefd, int *pidfd)
 {
 	int r;
 
-	int pipefd2[2];
+	int pipefd[2];
 	r = pipe2(pipefd, O_CLOEXEC);
 	if (r < 0) {
 		log_error("Failed to create pipe");
-		goto end:
+		goto end;
 	}
 	int fd;
-	r = pidfd_create(&fd, pipefd[0]);
+	r = worker_create(&fd, pipefd[0]);
 	close(pipefd[0]);
 	if (r < 0) {
 		log_error("Failed to create worker process: %m");
-		goto end_free:
+		goto end_free;
 	}
 	*pidfd = fd;
 	*writefd = pipefd[1];
@@ -196,10 +199,38 @@ int stream_loop_exp(Camera *c)
 		log_error("Failed to setup worker, fatal");
 		return r;
 	}
-	int fd = *pidfd;
+	close(1);
+	dup2(writefd, 1);
+	close(writefd);
+	int fd = pidfd;
 	for (;;) {
-		/* generate image, write to pipe, rinse and repeat */
+		/* ratelimit me proportional to framerate */
+		r = is_CaptureVideo(c->hid, IS_WAIT);
+		if (r != IS_SUCCESS) {
+			log_error("Failed at step CaptureVideo with error %d", r);
+			goto end_free;
+		}
+		IMAGE_FILE_PARAMS i;
+		memset(&i, 0, sizeof(i));
+		/* we might have to use mkfifo to create the pipe so that is_ImageFile
+		 * is able to open it, currently open would fail. The idea however is
+		 * to stream jpegs to ffmpeg over its stdin and generate the mp4 stream
+		 */
+		i.pwchFileName = L"/proc/self/fd/1";
+		i.nFileType = IS_IMG_JPG;
+		i.ppcImageMem = &c->img_mem;
+		i.pnImageID = &c->img_id;
+
+		r = is_ImageFile(c->hid, IS_IMAGE_FILE_CMD_SAVE, &i, sizeof(i));
+		if (r != IS_SUCCESS) {
+			log_error("Failed at step: ImageFile with error %d", r);
+			goto end_free;
+		}
+		/* usleep(800000U); */
 	}
+end_free:
+	close(1);
+	return r;
 }
 
 void unref_cam(Camera *c) {

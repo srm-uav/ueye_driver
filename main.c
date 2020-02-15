@@ -1,14 +1,19 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <string.h>
 
 #include "driver.h"
 #include "log.h"
+#include "process.h"
 
 extern char log_buf[];
 
-int main(int argc, char *argv[]) {
+bool fatal = false;
+
+int main(int argc, char *argv[])
+{
 	int r;
 
 	r = mlockall(MCL_FUTURE);

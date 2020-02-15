@@ -2,15 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include "process.h"
 #include "driver.h"
 #include "log.h"
+#include "ev.h"
 
-int init_cam(Camera *c) {
+int init_cam(Camera *c)
+{
 	c->ref = 0;
 
 	int r;
@@ -65,7 +69,8 @@ int init_cam(Camera *c) {
 	return r = IS_SUCCESS;
 }
 
-int capture_img(Camera *c) {
+int capture_img(Camera *c)
+{
 	/* XXX: for now, the path is hardcoded to a file in the cwd of the process */
 
 	int r;
@@ -98,13 +103,14 @@ int capture_img(Camera *c) {
 	return r;
 }
 
-int stream_loop(Camera *c) {
+int stream_loop(Camera *c)
+{
 	int r;
 
 	int fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd < 0) {
 		log_error("Failed to create client socket: %m");
-		goto end_r;
+		goto end;
 	}
 	/* TODO: switch to generic funcs */
 	struct sockaddr_in server;
@@ -118,20 +124,20 @@ int stream_loop(Camera *c) {
 	r = connect(fd, (struct sockaddr *) &server, sizeof(server));
 	if (r < 0) {
 		log_error("Failed to establish connection to server: %m");
-		goto end;
+		goto end_close;
 	}
 
 	r = is_SetImageMem(c->hid, c->img_mem, c->img_id);
 	if (r != IS_SUCCESS) {
 		log_error("Failed at step SetImageMem with error %d", r);
-		goto end;
+		goto end_close;
 	}
 
 	INT lineinc;
 	r = is_GetImageMemPitch(c->hid, &lineinc);
 	if (r != IS_SUCCESS) {
 		log_error("Failed at step GetImageMemPitch with error %d", r);
-		goto end;
+		goto end_close;
 	}
 
 	size_t size = lineinc * c->height;
@@ -140,21 +146,60 @@ int stream_loop(Camera *c) {
 		r = is_CaptureVideo(c->hid, IS_WAIT);
 		if (r != IS_SUCCESS) {
 			log_error("Failed at step CaptureVideo with error %d", r);
-			goto end;
+			goto end_close;
 		}
 		r = write(fd, c->img_mem, size);
 		if (r < 0) {
 			if (errno == EAGAIN)
 				continue;
 			log_error("Failed to transmit buffer: %m");
-			goto end;
+			goto end_close;
 		}
 	}
 
-end:
+end_close:
 	close(fd);
-end_r:
+end:
 	return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
+static int setup_worker(Camera *c, int *writefd, int *pidfd)
+{
+	int r;
+
+	int pipefd2[2];
+	r = pipe2(pipefd, O_CLOEXEC);
+	if (r < 0) {
+		log_error("Failed to create pipe");
+		goto end:
+	}
+	int fd;
+	r = pidfd_create(&fd, pipefd[0]);
+	close(pipefd[0]);
+	if (r < 0) {
+		log_error("Failed to create worker process: %m");
+		goto end_free:
+	}
+	*pidfd = fd;
+	*writefd = pipefd[1];
+end_free:
+	close(pipefd[1]);
+end:
+	return r;
+}
+
+int stream_loop_exp(Camera *c)
+{
+	int r, writefd, pidfd;
+	r = setup_worker(c, &writefd, &pidfd);
+	if (r < 0) {
+		log_error("Failed to setup worker, fatal");
+		return r;
+	}
+	int fd = *pidfd;
+	for (;;) {
+		/* generate image, write to pipe, rinse and repeat */
+	}
 }
 
 void unref_cam(Camera *c) {

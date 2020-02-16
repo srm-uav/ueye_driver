@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdbool.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -25,7 +27,7 @@ static int pidfd_send_signal(int pidfd, int sig, siginfo_t *info,
 	return syscall(__NR_pidfd_send_signal, pidfd, sig, info, flags);
 }
 
-pid_t worker_create(int *fd, int stdinfd);
+pid_t worker_create(int *fd, int stdinfd, char *res, char *framerate);
 
 void pidfd_cb(void *ptr);
 

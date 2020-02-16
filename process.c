@@ -13,7 +13,7 @@
 
 /* Explore use of clone3 and possible sandboxing of children */
 
-pid_t worker_create(int *fd, int stdinfd)
+pid_t worker_create(int *fd, int stdinfd, char *res, char *framerate)
 {
 	int r;
 	pid_t pid = fork();
@@ -33,7 +33,7 @@ pid_t worker_create(int *fd, int stdinfd)
 		if (r < 0) {
 			log_error("Failed to create directory hls, ignoring: %m");
 		}
-		char *argv[] = { NULL, "-f", "image2pipe", "-framerate", "10", "-i", "/dev/stdin", "-an", "-s", "1366x768", "-c:v", \
+		char *argv[] = { NULL, "-f", "image2pipe", "-framerate", framerate, "-i", "/dev/stdin", "-an", "-s", res, "-c:v", \
 				 "libx264", "-pix_fmt yuv420p", "-hls_time", "1", "-hls_list_size", "10", "-hls_segment_filename", \
 				 "hls/capture%05d.ts", "-hls_flags", "delete_segments", "hls/index.m3u8", NULL };
 		char *envp[] = { NULL };

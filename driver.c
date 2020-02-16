@@ -108,7 +108,7 @@ int capture_img(Camera *c)
 	return r;
 }
 
-static int setup_worker(Camera *c, int *writefd, int *pidfd)
+static int setup_worker(Camera *c, int *writefd, int *pidfd, char *res, char *framerate)
 {
 	int r;
 
@@ -119,7 +119,7 @@ static int setup_worker(Camera *c, int *writefd, int *pidfd)
 		goto end;
 	}
 	int fd;
-	r = worker_create(&fd, pipefd[0]);
+	r = worker_create(&fd, pipefd[0], res, framerate);
 	close(pipefd[0]);
 	if (r < 0) {
 		log_error("Failed to create worker process: %m");
@@ -131,10 +131,10 @@ end:
 	return r;
 }
 
-int stream_loop(Camera *c)
+int stream_loop(Camera *c, char *res, char *framerate)
 {
 	int r, writefd, pidfd;
-	r = setup_worker(c, &writefd, &pidfd);
+	r = setup_worker(c, &writefd, &pidfd, res, framerate);
 	if (r < 0) {
 		log_error("Failed to setup worker, fatal");
 		return r;

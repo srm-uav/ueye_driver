@@ -1,3 +1,5 @@
+#pragma once
+
 #include <ueye.h>
 
 struct Camera {
@@ -16,6 +18,6 @@ int init_cam(Camera *c);
 
 int capture_img(Camera *c);
 
-int stream_loop(Camera *c);
+int stream_loop(Camera *c, char *res, char *framerate);
 
 void unref_cam(Camera *c);

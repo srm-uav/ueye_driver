@@ -16,6 +16,8 @@
 #include "log.h"
 #include "ev.h"
 
+static int epfd;
+
 int init_cam(Camera *c)
 {
 	c->ref = 0;
@@ -106,66 +108,6 @@ int capture_img(Camera *c)
 	return r;
 }
 
-int stream_loop(Camera *c)
-{
-	int r;
-
-	int fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (fd < 0) {
-		log_error("Failed to create client socket: %m");
-		goto end;
-	}
-	/* TODO: switch to generic funcs */
-	struct sockaddr_in server;
-	struct hostent *serv_addr;
-
-	server.sin_family = AF_INET;
-	server.sin_port = htons(6969);
-	serv_addr = gethostbyname("localhost");
-
-	memcpy(&server.sin_addr.s_addr, serv_addr->h_addr, serv_addr->h_length);
-	r = connect(fd, (struct sockaddr *) &server, sizeof(server));
-	if (r < 0) {
-		log_error("Failed to establish connection to server: %m");
-		goto end_close;
-	}
-
-	r = is_SetImageMem(c->hid, c->img_mem, c->img_id);
-	if (r != IS_SUCCESS) {
-		log_error("Failed at step SetImageMem with error %d", r);
-		goto end_close;
-	}
-
-	INT lineinc;
-	r = is_GetImageMemPitch(c->hid, &lineinc);
-	if (r != IS_SUCCESS) {
-		log_error("Failed at step GetImageMemPitch with error %d", r);
-		goto end_close;
-	}
-
-	size_t size = lineinc * c->height;
-
-	for (;;) {
-		r = is_CaptureVideo(c->hid, IS_WAIT);
-		if (r != IS_SUCCESS) {
-			log_error("Failed at step CaptureVideo with error %d", r);
-			goto end_close;
-		}
-		r = write(fd, c->img_mem, size);
-		if (r < 0) {
-			if (errno == EAGAIN)
-				continue;
-			log_error("Failed to transmit buffer: %m");
-			goto end_close;
-		}
-	}
-
-end_close:
-	close(fd);
-end:
-	return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
-}
-
 static int setup_worker(Camera *c, int *writefd, int *pidfd)
 {
 	int r;
@@ -181,17 +123,15 @@ static int setup_worker(Camera *c, int *writefd, int *pidfd)
 	close(pipefd[0]);
 	if (r < 0) {
 		log_error("Failed to create worker process: %m");
-		goto end_free;
+		goto end;
 	}
 	*pidfd = fd;
 	*writefd = pipefd[1];
-end_free:
-	close(pipefd[1]);
 end:
 	return r;
 }
 
-int stream_loop_exp(Camera *c)
+int stream_loop(Camera *c)
 {
 	int r, writefd, pidfd;
 	r = setup_worker(c, &writefd, &pidfd);
@@ -202,13 +142,32 @@ int stream_loop_exp(Camera *c)
 	close(1);
 	dup2(writefd, 1);
 	close(writefd);
-	int fd = pidfd;
+	writefd = 1;
+
+	epfd = epoll_create1(EPOLL_CLOEXEC);
+	struct epoll_event ev, events[10];
+
+	source_t worker = { .fd = pidfd, .cb = &pidfd_cb };
+	ev.events = EPOLLIN;
+	ev.data.ptr = &worker;
+	r = epoll_ctl(epfd, EPOLL_CTL_ADD, worker.fd, &ev);
+	if (r < 0) {
+		log_error("Registration of worker's pidfd failed: %m");
+		goto end;
+	}
+
 	for (;;) {
-		/* ratelimit me proportional to framerate */
+		if (__builtin_expect(fatal, 0)) {
+			r = -1;
+			goto end;
+		}
+		/* ratelimit me proportional to framerate and explore use of
+		 * timerfd for frame generation and integration into event loop
+		 */
 		r = is_CaptureVideo(c->hid, IS_WAIT);
 		if (r != IS_SUCCESS) {
 			log_error("Failed at step CaptureVideo with error %d", r);
-			goto end_free;
+			goto end;
 		}
 		IMAGE_FILE_PARAMS i;
 		memset(&i, 0, sizeof(i));
@@ -224,12 +183,18 @@ int stream_loop_exp(Camera *c)
 		r = is_ImageFile(c->hid, IS_IMAGE_FILE_CMD_SAVE, &i, sizeof(i));
 		if (r != IS_SUCCESS) {
 			log_error("Failed at step: ImageFile with error %d", r);
-			goto end_free;
+			goto end;
 		}
-		/* usleep(800000U); */
+		/* dispatch routines must be non blocking */
+		int n = epoll_wait(epfd, events, 10, 500000);
+		for (int i = 0; i < n; ++i) {
+			source_t *s = events[i].data.ptr;
+			s->cb(&s);
+		}
 	}
-end_free:
-	close(1);
+end:
+	close(pidfd);
+	close(writefd);
 	return r;
 }
 

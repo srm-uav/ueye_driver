@@ -7,8 +7,9 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include "log.h"
 #include "process.h"
+#include "log.h"
+#include "ev.h"
 
 /* Explore use of clone3 and possible sandboxing of children */
 
@@ -29,6 +30,9 @@ pid_t worker_create(int *fd, int stdinfd)
 		}
 		/* set up arguments for our ffmpeg worker */
 		r = mkdir("hls", 0755);
+		if (r < 0) {
+			log_error("Failed to create directory hls, ignoring: %m");
+		}
 		char *argv[] = { NULL, "-f", "image2pipe", "-framerate", "10", "-i", "/dev/stdin", "-an", "-s", "1366x768", "-c:v", \
 				 "libx264", "-pix_fmt yuv420p", "-hls_time", "1", "-hls_list_size", "10", "-hls_segment_filename", \
 				 "hls/capture%05d.ts", "-hls_flags", "delete_segments", "hls/index.m3u8", NULL };
@@ -36,13 +40,15 @@ pid_t worker_create(int *fd, int stdinfd)
 		r = execve("/usr/bin/ffmpeg", argv, envp);
 		if (r < 0)
 			log_error("Failed to exec into ffmpeg: %m");
+		exit(EXIT_FAILURE);
 	}
 	return pid;
 }
 
 void pidfd_cb(void *ptr)
 {
-	int fd = *((int *) ptr);
+	source_t *p = (source_t *) ptr;
+	int fd = p->fd;
 	int r;
 
 	siginfo_t info;
@@ -60,8 +66,8 @@ void pidfd_cb(void *ptr)
 		if (!info.si_pid && !info.si_signo)
 			log_warn("Callback raised but no process can be waited upon, ignoring");
 		else {
+			log_error("Worker process died/interrupted, fatal");
 			fatal = true;
-			/* add logging for child exit */
 		}
 	}
 	return;

@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
 	r = stream_loop(&c);
 	if (r < 0) {
-		log_error("Failed to transmit frames to server");
+		log_error("Failure in transmission of frames to worker, exiting");
 		goto end_unref;
 	}
 

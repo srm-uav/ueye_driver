@@ -25,11 +25,12 @@ int main(int argc, char *argv[])
 {
 	int r;
 
-	r = mlockall(MCL_FUTURE);
+	/* Holy moly, doing this means InitCamera hangs forever! */
+/*	r = mlockall(MCL_FUTURE);
 	if (r < 0) {
 		log_warn("Failed to lock pages in memory, ignoring: %m");
 	}
-
+*/
 	memset(log_buf, 0, LOG_BUF_SIZE);
 	r = setvbuf(stderr, log_buf, _IOFBF, LOG_BUF_SIZE);
 	if (r) {
@@ -66,12 +67,12 @@ int main(int argc, char *argv[])
 		goto end_unref;
 	}
 
-	r = stream_loop(&c, res ? res : "1366x768", framerate ? framerate : "10");
+/*	r = stream_loop(&c, res ? res : "1366x768", framerate ? framerate : "10");
 	if (r < 0) {
 		log_error("Failure in transmission of frames to worker, exiting");
 		goto end_unref;
 	}
-
+*/
 end_unref:
 	unref_cam(&c);
 end:

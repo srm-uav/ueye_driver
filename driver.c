@@ -25,7 +25,7 @@ int init_cam(Camera *c)
 	int r;
 	log_info("Initiating connection...");
 
-	HIDS hid = 0;
+	HIDS hid = 1;
 	r = is_InitCamera(&hid, NULL);
 	if (r != IS_SUCCESS) {
 		log_error("Failed at step: InitCamera with error %d", r);

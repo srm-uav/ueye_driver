@@ -6,10 +6,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netdb.h>
+#include <sys/stat.h>
 
 #include "process.h"
 #include "driver.h"
@@ -112,21 +109,21 @@ static int setup_worker(Camera *c, int *writefd, int *pidfd, char *res, char *fr
 {
 	int r;
 
-	int pipefd[2];
-	r = pipe2(pipefd, O_CLOEXEC);
+	r = mkfifo("tmp", 0755);
 	if (r < 0) {
 		log_error("Failed to create pipe");
 		goto end;
 	}
 	int fd;
-	r = worker_create(&fd, pipefd[0], res, framerate);
-	close(pipefd[0]);
+	/* prevent the possibilty of a deadlock and allow data to buffer */
+	int pipe = open("tmp", O_RDWR);
+	r = worker_create(&fd, pipe, res, framerate);
 	if (r < 0) {
 		log_error("Failed to create worker process: %m");
 		goto end;
 	}
 	*pidfd = fd;
-	*writefd = pipefd[1];
+	*writefd = pipe;
 end:
 	return r;
 }
@@ -164,29 +161,28 @@ int stream_loop(Camera *c, char *res, char *framerate)
 		/* ratelimit me proportional to framerate and explore use of
 		 * timerfd for frame generation and integration into event loop
 		 */
+
+		/* TODO: improve handling of case where buffer is being written to */
 		r = is_CaptureVideo(c->hid, IS_WAIT);
-		if (r != IS_SUCCESS) {
+		if (r != IS_SUCCESS && r != IS_CAPTURE_RUNNING) {
 			log_error("Failed at step CaptureVideo with error %d", r);
 			goto end;
 		}
 		IMAGE_FILE_PARAMS i;
 		memset(&i, 0, sizeof(i));
-		/* we might have to use mkfifo to create the pipe so that is_ImageFile
-		 * is able to open it, currently open would fail. The idea however is
-		 * to stream jpegs to ffmpeg over its stdin and generate the mp4 stream
-		 */
+
 		i.pwchFileName = L"/proc/self/fd/1";
 		i.nFileType = IS_IMG_JPG;
 		i.ppcImageMem = &c->img_mem;
 		i.pnImageID = &c->img_id;
 
 		r = is_ImageFile(c->hid, IS_IMAGE_FILE_CMD_SAVE, &i, sizeof(i));
-		if (r != IS_SUCCESS) {
+		if (r != IS_SUCCESS && r != IS_SEQ_BUFFER_IS_LOCKED) {
 			log_error("Failed at step: ImageFile with error %d", r);
 			goto end;
 		}
 		/* dispatch routines must be non blocking */
-		int n = epoll_wait(epfd, events, 10, 500000);
+		int n = epoll_wait(epfd, events, 10, 10);
 		for (int i = 0; i < n; ++i) {
 			source_t *s = events[i].data.ptr;
 			s->cb(&s);

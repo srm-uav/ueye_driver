@@ -1,0 +1,22 @@
+<html>
+<head>
+<style>
+body {
+    width: 982px;
+    margin: 50px auto;
+}
+</style>
+</head>
+<body>
+  <video id="my-video" width="1024" height="768" autoplay controls></video> 
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+  if ( Hls.isSupported() ) {
+    var video = document.getElementById('my-video');
+    var hls = new Hls();
+    hls.loadSource('index.m3u8');
+    hls.attachMedia(video);
+  }
+</script>
+</body>
+</html>

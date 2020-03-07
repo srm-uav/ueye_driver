@@ -25,18 +25,19 @@ int main(int argc, char *argv[])
 {
 	int r;
 
-	/* Holy moly, doing this means InitCamera hangs forever! */
-/*	r = mlockall(MCL_FUTURE);
+	/* bump RLIMIT_MEMLOCK before using this */
+/*
+	r = mlockall(MCL_FUTURE);
 	if (r < 0) {
 		log_warn("Failed to lock pages in memory, ignoring: %m");
 	}
-
+*/
 	memset(log_buf, 0, LOG_BUF_SIZE);
 	r = setvbuf(stderr, log_buf, _IOFBF, LOG_BUF_SIZE);
 	if (r) {
 		log_warn("Failed to set full buffering, ignoring: %m");
 	}
-*/
+
 	int opt;
 	char *res = NULL, *framerate = NULL;
 

@@ -7,6 +7,8 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <errno.h>
+#include <malloc.h>
+#include <unistd.h>
 
 #include "driver.h"
 #include "log.h"
@@ -27,7 +29,7 @@ int main(int argc, char *argv[])
 
 	/* bump RLIMIT_MEMLOCK before using this */
 /*
-	r = mlockall(MCL_FUTURE);
+	r = mlockall(MCL_CURRENT|MCL_FUTURE);
 	if (r < 0) {
 		log_warn("Failed to lock pages in memory, ignoring: %m");
 	}
@@ -38,6 +40,22 @@ int main(int argc, char *argv[])
 		log_warn("Failed to set full buffering, ignoring: %m");
 	}
 
+	mallopt(M_TRIM_THRESHOLD, -1);
+	/* mmap needs to be disabled as on free, mapping are unmapped
+	   regardless of the trim setting */
+	mallopt(M_MMAP_MAX, 0);
+
+#define SIZE 32*1024*1024;
+	char *buf = malloc(SIZE);
+	int pagesize = sysconf(_SC_PAGESIZE);
+	/* touch each page to generate a page fault */
+	for (int i = 0; i < SIZE; i += pagesize) {
+		buf[i] = 0;
+	}
+	/* does not release any memory back to OS, but the same buffer
+	   will be utilized for serving future malloc requests */
+	free(buf);
+	
 	int opt;
 	char *res = NULL, *framerate = NULL;
 

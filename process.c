@@ -13,6 +13,17 @@
 
 /* Explore use of clone3 and possible sandboxing of children */
 
+
+int pidfd_open(pid_t pid, unsigned int flags)
+{
+	return syscall(__NR_pidfd_open, pid, flags);
+}
+
+int pidfd_send_signal(int pidfd, int sig, siginfo_t *info, unsigned int flags)
+{
+	return syscall(__NR_pidfd_send_signal, pidfd, sig, info, flags);
+}
+
 pid_t worker_create(int *fd, int stdinfd, char *res, char *framerate)
 {
 	int r;

@@ -14,7 +14,7 @@
 #include "log.h"
 #include "process.h"
 
-extern char log_buf[];
+char log_buf[LOG_BUF_SIZE];
 bool fatal = false;
 
 void usage(void)
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 	   regardless of the trim setting */
 	mallopt(M_MMAP_MAX, 0);
 
-#define SIZE 2*1024*1024;
+#define SIZE 2*1024*1024
 	char *buf = malloc(SIZE);
 	int pagesize = sysconf(_SC_PAGESIZE);
 	/* touch each page to generate a page fault */

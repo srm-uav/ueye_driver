@@ -16,7 +16,7 @@ enum log_level {
 #define LOG_DEBUG 1
 #define LOG_BUF_SIZE 4096U
 
-char log_buf[LOG_BUF_SIZE];
+extern char log_buf[];
 
 static char* log_level_to_str[_LOG_LEVEL_MAX] = {
 	[LOG_INFO] = "info",
@@ -24,15 +24,14 @@ static char* log_level_to_str[_LOG_LEVEL_MAX] = {
 	[LOG_ERROR] = "error",
 };
 
-#define log_internal(level, ...)					\
-	({								\
+#define log_internal(level, ...) do {					\
 		int _lev = level;					\
 		char *_levs = log_level_to_str[_lev];			\
 		if (LOG_DEBUG)						\
 			fprintf(stderr, "(%s) [%s:%s:%d] ",		\
 				_levs, __FILE__, __func__, __LINE__);	\
 		fprintf(stderr, __VA_ARGS__);				\
-	})
+	} while (0)
 
 #define log_info(...) log_internal(LOG_INFO, __VA_ARGS__)
 #define log_warn(...) log_internal(LOG_WARN, __VA_ARGS__)

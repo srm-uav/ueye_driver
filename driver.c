@@ -194,7 +194,8 @@ end:
 	return r;
 }
 
-void unref_cam(Camera *c) {
+void unref_cam(Camera *c)
+{
 	if (!(--c->ref)) {
 		log_info("Refcount dropped to zero, freeing object...");
 

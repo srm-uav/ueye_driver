@@ -17,7 +17,8 @@
 extern char log_buf[];
 bool fatal = false;
 
-void usage(void) {
+void usage(void)
+{
 	log_info("Usage: %s -r <resolution> -f <framerate>", program_invocation_short_name);
 	log_info("Example:\n\t%s -r 1366x768 -f 10", program_invocation_short_name);
 	return;
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
 	   regardless of the trim setting */
 	mallopt(M_MMAP_MAX, 0);
 
-#define SIZE 32*1024*1024;
+#define SIZE 2*1024*1024;
 	char *buf = malloc(SIZE);
 	int pagesize = sysconf(_SC_PAGESIZE);
 	/* touch each page to generate a page fault */
@@ -55,7 +56,7 @@ int main(int argc, char *argv[])
 	/* does not release any memory back to OS, but the same buffer
 	   will be utilized for serving future malloc requests */
 	free(buf);
-	
+
 	int opt;
 	char *res = NULL, *framerate = NULL;
 

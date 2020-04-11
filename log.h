@@ -1,24 +1,5 @@
-/*
- * This file is part of berk.
- *
- * Copyright (C) 2019 Kumar Kartikeya Dwivedi <memxor@gmail.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it would be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
-
-#pragma once
+#ifndef __kkd_log_h
+#define __kkd_log_h
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -33,7 +14,7 @@ enum log_level {
 };
 
 #define LOG_DEBUG 1
-#define LOG_BUF_SIZE 2048U
+#define LOG_BUF_SIZE 4096U
 
 char log_buf[LOG_BUF_SIZE];
 
@@ -51,9 +32,10 @@ static char* log_level_to_str[_LOG_LEVEL_MAX] = {
 			fprintf(stderr, "(%s) [%s:%s:%d] ",		\
 				_levs, __FILE__, __func__, __LINE__);	\
 		fprintf(stderr, __VA_ARGS__);				\
-		fprintf(stderr, "\n");					\
 	})
 
 #define log_info(...) log_internal(LOG_INFO, __VA_ARGS__)
 #define log_warn(...) log_internal(LOG_WARN, __VA_ARGS__)
 #define log_error(...) do { log_internal(LOG_ERROR, __VA_ARGS__); fflush(stderr); } while (0)
+
+#endif

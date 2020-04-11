@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __kkd_driver_h
+#define __kkd_driver_h
 
 #include <ueye.h>
 
@@ -21,3 +22,5 @@ int capture_img(Camera *c);
 int stream_loop(Camera *c, char *res, char *framerate);
 
 void unref_cam(Camera *c);
+
+#endif

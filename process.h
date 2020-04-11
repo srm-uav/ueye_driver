@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __kkd_process_h
+#define __kkd_process_h
 
 #include <stdbool.h>
 #include <sys/types.h>
@@ -32,3 +33,5 @@ pid_t worker_create(int *fd, int stdinfd, char *res, char *framerate);
 void pidfd_cb(void *ptr);
 
 int send_sig(int fd, int sig);
+
+#endif

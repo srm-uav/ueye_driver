@@ -3,7 +3,19 @@
 
 #include <ueye.h>
 
+enum states {
+	CAM_INACTIVE = 0,
+	CAM_STARTING,
+	CAM_RUNNING,
+	CAM_STOPPING,
+	CAM_FAILED,
+	_CAM_STATE_MAX,
+};
+
+extern const char * const statestr[_CAM_STATE_MAX];
+
 struct Camera {
+	enum states state;
 	unsigned int ref;
 	HIDS hid;
 	DWORD width;

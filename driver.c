@@ -15,18 +15,27 @@
 
 static int epfd;
 
+const char * const statestr[_CAM_STATE_MAX] = {
+	[CAM_INACTIVE] = "inactive",
+	[CAM_STARTING] = "starting",
+	[CAM_RUNNING] = "running",
+	[CAM_STOPPING] = "stopping",
+	[CAM_FAILED] = "failed",
+};
+
 int init_cam(Camera *c)
 {
-	c->ref = 0;
-
+	c->ref++;
 	int r;
-	log_info("Initiating connection...");
+
+	log_info("Changing state for Camera: %s -> %s", statestr[c->state], statestr[CAM_STARTING]);
+	c->state = CAM_STARTING;
 
 	HIDS hid = 1;
 	r = is_InitCamera(&hid, NULL);
 	if (r != IS_SUCCESS) {
 		log_error("Failed at step: InitCamera with error %d", r);
-		return r;
+		goto fail;
 	}
 	log_info("Connected to camera %d", hid);
 
@@ -34,13 +43,13 @@ int init_cam(Camera *c)
 	r = is_GetSensorInfo(hid, &s);
 	if (r != IS_SUCCESS) {
 		log_error("Failed at step: GetSensorInfo with error %d", r);
-		return r;
+		goto fail;
 	}
 
 	r = is_SetColorMode(hid, IS_CM_BGR8_PACKED);
 	if (r != IS_SUCCESS) {
 		log_error("Failed at step: SetColorMode with error %d", r);
-		return r;
+		goto fail;
 	}
 
 	char *img_mem;
@@ -50,13 +59,13 @@ int init_cam(Camera *c)
 	r = is_AllocImageMem(hid, width, height, 24, &img_mem, &img_id);
 	if (r != IS_SUCCESS) {
 		log_error("Failed at step: AllocImageMem with error %d", r);
-		return r;
+		goto fail;
 	}
 
 	r = is_SetImageMem(hid, img_mem, img_id);
 	if (r != IS_SUCCESS) {
 		log_error("Failed at step: SetImageMem with error %d", r);
-		return r;
+		goto fail;
 	}
 
 	c->ref++;
@@ -68,7 +77,14 @@ int init_cam(Camera *c)
 	c->img_id = img_id;
 
 	log_info("Sensor %s has been set initialized", c->name);
+	log_info("Changing state for Camera: %s -> %s", statestr[c->state], statestr[CAM_RUNNING]);
+	c->state = CAM_RUNNING;
+
 	return r = IS_SUCCESS;
+fail:
+	log_info("Changing state from Camera: %s -> %s", statestr[c->state], statestr[CAM_FAILED]);
+	c->state = CAM_FAILED;
+	return r;
 }
 
 int capture_img(Camera *c)
@@ -120,6 +136,7 @@ static int setup_worker(Camera *c, int *writefd, int *pidfd, char *res, char *fr
 	r = worker_create(&fd, pipe, res, framerate);
 	if (r < 0) {
 		log_error("Failed to create worker process: %m");
+		c->state = CAM_FAILED;
 		goto end;
 	}
 	*pidfd = fd;
@@ -144,7 +161,7 @@ int stream_loop(Camera *c, char *res, char *framerate)
 	epfd = epoll_create1(EPOLL_CLOEXEC);
 	struct epoll_event ev, events[10];
 
-	source_t worker = { .fd = pidfd, .cb = &pidfd_cb };
+	source_t worker = { .c = c, .fd = pidfd, .cb = &pidfd_cb };
 	ev.events = EPOLLIN;
 	ev.data.ptr = &worker;
 	r = epoll_ctl(epfd, EPOLL_CTL_ADD, worker.fd, &ev);
@@ -153,11 +170,7 @@ int stream_loop(Camera *c, char *res, char *framerate)
 		goto end;
 	}
 
-	for (;;) {
-		if (__builtin_expect(fatal, 0)) {
-			r = -1;
-			goto end;
-		}
+	while (c->state == CAM_RUNNING) {
 		/* ratelimit me proportional to framerate and explore use of
 		 * timerfd for frame generation and integration into event loop
 		 */
@@ -198,6 +211,8 @@ void unref_cam(Camera *c)
 {
 	if (!(--c->ref)) {
 		log_info("Refcount dropped to zero, freeing object...");
+		log_info("Changing state of Camera: %s -> %s", statestr[c->state], statestr[CAM_STOPPING]);
+		c->state = CAM_STOPPING;
 
 		int r;
 		r = is_FreeImageMem(c->hid, c->img_mem, c->img_id);
@@ -209,8 +224,11 @@ void unref_cam(Camera *c)
 		if (r != IS_SUCCESS) {
 			log_error("Failed at step: ExitCamera with error %d", r);
 		}
-		log_info("Disconnected camera %s with HID %d", c->name, c->hid);
+		log_info("Disconnected camera %s with HID %d", c->name ? : "(unnamed)", c->hid);
+		log_info("Changing state of Camera: %s -> %s", statestr[c->state], statestr[CAM_INACTIVE]);
+		c->state = CAM_INACTIVE;
 		free(c->name);
+		free(c);
 	}
 	return;
 }

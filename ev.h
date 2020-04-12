@@ -3,7 +3,10 @@
 
 #include <sys/epoll.h>
 
+#include "driver.h"
+
 typedef struct event_source {
+	Camera *c;
 	int fd;
 	void (*cb)(void *userdata);
 } source_t;

@@ -8,11 +8,11 @@
 #include <sys/wait.h>
 
 #include "process.h"
+#include "driver.h"
 #include "log.h"
 #include "ev.h"
 
 /* Explore use of clone3 and possible sandboxing of children */
-
 
 int pidfd_open(pid_t pid, unsigned int flags)
 {
@@ -51,6 +51,7 @@ pid_t worker_create(int *fd, int stdinfd, char *res, char *framerate)
 		r = execve("/usr/bin/ffmpeg", argv, envp);
 		if (r < 0)
 			log_error("Failed to exec into ffmpeg: %m");
+
 		exit(EXIT_FAILURE);
 	}
 	return pid;
@@ -78,7 +79,8 @@ void pidfd_cb(void *ptr)
 			log_warn("Callback raised but no process can be waited upon, ignoring");
 		else {
 			log_error("Worker process died/interrupted, fatal");
-			fatal = true;
+			log_info("Changing state of Camera: %s -> %s", statestr[p->c->state], statestr[CAM_FAILED]);
+			p->c->state = CAM_FAILED;
 		}
 	}
 	return;

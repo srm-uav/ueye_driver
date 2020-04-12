@@ -7,8 +7,6 @@
 #include <signal.h>
 #include <sys/syscall.h>
 
-extern bool fatal;
-
 #ifndef __NR_pidfd_open
 #define __NR_pidfd_open 434   /* System call # on most architectures */
 #endif

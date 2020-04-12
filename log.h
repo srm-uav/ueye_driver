@@ -31,6 +31,7 @@ static char* log_level_to_str[_LOG_LEVEL_MAX] = {
 			fprintf(stderr, "(%s) [%s:%s:%d] ",		\
 				_levs, __FILE__, __func__, __LINE__);	\
 		fprintf(stderr, __VA_ARGS__);				\
+		fprintf(stderr, "\n");					\
 	} while (0)
 
 #define log_info(...) log_internal(LOG_INFO, __VA_ARGS__)

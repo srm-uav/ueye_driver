@@ -15,7 +15,6 @@
 #include "process.h"
 
 char log_buf[LOG_BUF_SIZE];
-bool fatal = false;
 
 void usage(void)
 {
@@ -74,28 +73,27 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	Camera c;
-	r = init_cam(&c);
+	Camera *c = calloc(1, sizeof(*c));
+	r = init_cam(c);
 	if (r != IS_SUCCESS) {
 		log_error("Error: Failed to initialize camera");
 		goto end;
 	}
 
-	r = capture_img(&c);
+	r = capture_img(c);
 	if (r != IS_SUCCESS) {
 		log_error("Error: Failed to capture image");
-		goto end_unref;
+		goto end;
 	}
 
-	r = stream_loop(&c, res ? res : "1366x768", framerate ? framerate : "10");
+	r = stream_loop(c, res ? res : "1366x768", framerate ? framerate : "10");
 	if (r < 0) {
 		log_error("Failure in transmission of frames to worker, exiting");
-		goto end_unref;
+		goto end;
 	}
 
-end_unref:
-	unref_cam(&c);
 end:
+	unref_cam(c);
 	free(res);
 	free(framerate);
 	return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;

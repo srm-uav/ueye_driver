@@ -79,8 +79,7 @@ void pidfd_cb(void *ptr)
 			log_warn("Callback raised but no process can be waited upon, ignoring");
 		else {
 			log_error("Worker process died/interrupted, fatal");
-			log_info("Changing state of Camera: %s -> %s", statestr[p->c->state], statestr[CAM_FAILED]);
-			p->c->state = CAM_FAILED;
+			chstate(p->c, p->c->state, CAM_FAILED);
 		}
 	}
 	return;

@@ -3,7 +3,9 @@
 
 #include <ueye.h>
 
-enum states {
+#include "log.h"
+
+enum state {
 	CAM_INACTIVE = 0,
 	CAM_STARTING,
 	CAM_RUNNING,
@@ -12,10 +14,12 @@ enum states {
 	_CAM_STATE_MAX,
 };
 
+typedef enum state State;
+
 extern const char * const statestr[_CAM_STATE_MAX];
 
 struct Camera {
-	enum states state;
+	State state;
 	unsigned int ref;
 	HIDS hid;
 	DWORD width;
@@ -34,5 +38,10 @@ int capture_img(Camera *c);
 int stream_loop(Camera *c, char *res, char *framerate);
 
 void unref_cam(Camera *c);
+
+static inline void chstate(Camera *c, State a, State b) {
+	log_info("Changing state for Camera (ID:%d): [%s] -> [%s]", c->hid, statestr[a], statestr[b]);
+	c->state = b;
+}
 
 #endif

@@ -1,11 +1,12 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/syscall.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "process.h"
 #include "driver.h"
@@ -26,10 +27,18 @@ int pidfd_send_signal(int pidfd, int sig, siginfo_t *info, unsigned int flags)
 
 pid_t worker_create(int *fd, int stdinfd, char *res, char *framerate)
 {
+	assert(fd);
+	/* caller asserts on res and framerate */
 	int r;
 	pid_t pid = fork();
 	if (pid) {
 		*fd = pidfd_open(pid, 0);
+		if (*fd < 0) {
+			log_error("Failed to open pidfd: %m");
+			log_info("Trying to clean up worker");
+			send_sig(*fd, SIGKILL);
+			return *fd;
+		}
 	}
 	else {
 		/* set stdin */
@@ -37,7 +46,7 @@ pid_t worker_create(int *fd, int stdinfd, char *res, char *framerate)
 		r = dup2(stdinfd, 0);
 		if (r < 0) {
 			log_error("Failed to dup read end of pipe to stdin: %m");
-			return pid;
+			goto end;
 		}
 		/* set up arguments for our ffmpeg worker */
 		r = mkdir("hls", 0755);
@@ -51,8 +60,14 @@ pid_t worker_create(int *fd, int stdinfd, char *res, char *framerate)
 		r = execve("/usr/bin/ffmpeg", argv, envp);
 		if (r < 0)
 			log_error("Failed to exec into ffmpeg: %m");
-
+	end:
 		exit(EXIT_FAILURE);
+	}
+	/* check for the existence of our worker */
+	r = send_sig(*fd, 0);
+	if (r < 0) {
+		log_error("Worker is not alive: %m");
+		return r;
 	}
 	return pid;
 }

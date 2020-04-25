@@ -39,7 +39,8 @@ int stream_loop(Camera *c, char *res, char *framerate);
 
 void unref_cam(Camera *c);
 
-static inline void chstate(Camera *c, State a, State b) {
+static inline void chstate(Camera *c, State a, State b)
+{
 	log_info("Changing state for Camera (ID:%d): [%s] -> [%s]", c->hid, statestr[a], statestr[b]);
 	c->state = b;
 }

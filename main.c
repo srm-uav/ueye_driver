@@ -1,13 +1,13 @@
 #define _GNU_SOURCE
 
+#include <errno.h>
+#include <getopt.h>
+#include <malloc.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include <stdlib.h>
-#include <getopt.h>
-#include <sys/mman.h>
 #include <string.h>
-#include <errno.h>
-#include <malloc.h>
+#include <stdlib.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include "driver.h"
@@ -41,12 +41,16 @@ int main(int argc, char *argv[])
 	}
 
 	mallopt(M_TRIM_THRESHOLD, -1);
-	/* mmap needs to be disabled as on free, mapping are unmapped
+	/* mmap needs to be disabled as on free, mappings are unmapped
 	   regardless of the trim setting */
 	mallopt(M_MMAP_MAX, 0);
 
-#define SIZE 2*1024*1024
+#define SIZE 2*1024*1024 /* 2MB should be ok */
 	char *buf = malloc(SIZE);
+	if (!buf) {
+		log_oom();
+		return EXIT_FAILURE;
+	}
 	int pagesize = sysconf(_SC_PAGESIZE);
 	/* touch each page to generate a page fault */
 	for (int i = 0; i < SIZE; i += pagesize) {
@@ -74,6 +78,10 @@ int main(int argc, char *argv[])
 	}
 
 	Camera *c = calloc(1, sizeof(*c));
+	if (!c) {
+		log_oom();
+		goto end;
+	}
 	r = init_cam(c);
 	if (r != IS_SUCCESS) {
 		log_error("Error: Failed to initialize camera");
@@ -86,6 +94,7 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
+	/* TODO: sanity check for res and framerate */
 	r = stream_loop(c, res ? res : "1366x768", framerate ? framerate : "10");
 	if (r < 0) {
 		log_error("Failure in transmission of frames to worker, exiting");
@@ -93,7 +102,7 @@ int main(int argc, char *argv[])
 	}
 
 end:
-	unref_cam(c);
+	if (c) unref_cam(c);
 	free(res);
 	free(framerate);
 	return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;

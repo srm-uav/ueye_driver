@@ -37,5 +37,6 @@ static char* log_level_to_str[_LOG_LEVEL_MAX] = {
 #define log_info(...) log_internal(LOG_INFO, __VA_ARGS__)
 #define log_warn(...) log_internal(LOG_WARN, __VA_ARGS__)
 #define log_error(...) do { log_internal(LOG_ERROR, __VA_ARGS__); fflush(stderr); } while (0)
+#define log_oom() log_error("Memory allocation failed: %m")
 
 #endif

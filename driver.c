@@ -1,12 +1,13 @@
 #define _GNU_SOURCE
 
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "process.h"
 #include "driver.h"
@@ -25,6 +26,8 @@ const char * const statestr[_CAM_STATE_MAX] = {
 
 int init_cam(Camera *c)
 {
+	assert(c);
+
 	c->ref++;
 	int r;
 
@@ -119,6 +122,10 @@ int capture_img(Camera *c)
 
 static int setup_worker(Camera *c, int *writefd, int *pidfd, char *res, char *framerate)
 {
+	assert(c);
+	assert(writefd);
+	assert(pidfd);
+	/* caller asserts on res and framerate */
 	int r;
 
 	r = mkfifo("tmp", 0755);
@@ -143,6 +150,10 @@ end:
 
 int stream_loop(Camera *c, char *res, char *framerate)
 {
+	assert(c);
+	assert(res);
+	assert(framerate);
+
 	int r, writefd, pidfd;
 	r = setup_worker(c, &writefd, &pidfd, res, framerate);
 	if (r < 0) {
@@ -205,6 +216,7 @@ end:
 
 void unref_cam(Camera *c)
 {
+	assert(c);
 	if (!(--c->ref)) {
 		log_info("Refcount dropped to zero, freeing object...");
 		chstate(c, c->state, CAM_STOPPING);

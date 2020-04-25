@@ -25,7 +25,7 @@ struct Camera {
 	DWORD width;
 	DWORD height;
 	char *img_mem;
-	INT img_id;
+	UINT img_id;
 	char *name;
 };
 

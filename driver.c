@@ -216,8 +216,7 @@ end:
 
 void unref_cam(Camera *c)
 {
-	assert(c);
-	if (!(--c->ref)) {
+	if (c && !(--c->ref)) {
 		log_info("Refcount dropped to zero, freeing object...");
 		chstate(c, c->state, CAM_STOPPING);
 

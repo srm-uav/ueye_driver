@@ -14,7 +14,7 @@
 #include "log.h"
 #include "process.h"
 
-char log_buf[LOG_BUF_SIZE];
+char log_buf[LOG_BUF_SIZE] = { 0 };
 
 void usage(void)
 {
@@ -25,6 +25,7 @@ void usage(void)
 
 int main(int argc, char *argv[])
 {
+	Camera *c = NULL;
 	int r;
 
 	/* bump RLIMIT_MEMLOCK before using this */
@@ -34,7 +35,6 @@ int main(int argc, char *argv[])
 		log_warn("Failed to lock pages in memory, ignoring: %m");
 	}
 */
-	memset(log_buf, 0, LOG_BUF_SIZE);
 	r = setvbuf(stderr, log_buf, _IOFBF, LOG_BUF_SIZE);
 	if (r) {
 		log_warn("Failed to set full buffering, ignoring: %m");
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	Camera *c = calloc(1, sizeof(*c));
+	c = calloc(1, sizeof(*c));
 	if (!c) {
 		log_oom();
 		goto end;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 	}
 
 end:
-	if (c) unref_cam(c);
+	unref_cam(c);
 	free(res);
 	free(framerate);
 	return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;

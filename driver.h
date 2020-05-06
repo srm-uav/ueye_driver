@@ -1,12 +1,13 @@
 #ifndef __kkd_driver_h
 #define __kkd_driver_h
 
+#include <assert.h>
 #include <ueye.h>
 
 #include "log.h"
 
 enum state {
-	CAM_INACTIVE = 0,
+	CAM_INACTIVE,
 	CAM_STARTING,
 	CAM_RUNNING,
 	CAM_STOPPING,
@@ -14,12 +15,12 @@ enum state {
 	_CAM_STATE_MAX,
 };
 
-typedef enum state State;
+typedef enum state state_t;
 
 extern const char * const statestr[_CAM_STATE_MAX];
 
 struct Camera {
-	State state;
+	state_t state;
 	unsigned int ref;
 	HIDS hid;
 	DWORD width;
@@ -39,10 +40,12 @@ int stream_loop(Camera *c, char *res, char *framerate);
 
 void unref_cam(Camera *c);
 
-static inline void chstate(Camera *c, State a, State b)
+static inline void chstate(Camera *c, state_t a)
 {
-	log_info("Changing state for Camera (ID:%d): [%s] -> [%s]", c->hid, statestr[a], statestr[b]);
-	c->state = b;
+	assert(c);
+	assert(a < _CAM_STATE_MAX);
+	log_info("Changing state for Camera (ID:%d): [%s] -> [%s]", c->hid, statestr[c->state], statestr[a]);
+	c->state = a;
 }
 
 #endif

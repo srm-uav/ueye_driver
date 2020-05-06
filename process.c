@@ -94,7 +94,7 @@ void pidfd_cb(void *ptr)
 			log_warn("Callback raised but no process can be waited upon, ignoring");
 		else {
 			log_error("Worker process died/interrupted, fatal");
-			chstate(p->c, p->c->state, CAM_FAILED);
+			chstate(p->c, CAM_FAILED);
 		}
 	}
 	return;

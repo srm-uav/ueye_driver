@@ -31,7 +31,7 @@ int init_cam(Camera *c)
 	c->ref++;
 	int r;
 
-	chstate(c, c->state, CAM_STARTING);
+	chstate(c, CAM_STARTING);
 
 	HIDS hid = 1;
 	r = is_InitCamera(&hid, NULL);
@@ -78,11 +78,11 @@ int init_cam(Camera *c)
 	c->img_id = img_id;
 
 	log_info("Sensor %s has been set initialized", c->name);
-	chstate(c, c->state, CAM_RUNNING);
+	chstate(c, CAM_RUNNING);
 
 	return r = IS_SUCCESS;
 fail:
-	chstate(c, c->state, CAM_FAILED);
+	chstate(c, CAM_FAILED);
 	return r;
 }
 
@@ -218,7 +218,7 @@ void unref_cam(Camera *c)
 {
 	if (c && !(--c->ref)) {
 		log_info("Refcount dropped to zero, freeing object...");
-		chstate(c, c->state, CAM_STOPPING);
+		chstate(c, CAM_STOPPING);
 
 		int r;
 		r = is_FreeImageMem(c->hid, c->img_mem, c->img_id);
@@ -231,7 +231,7 @@ void unref_cam(Camera *c)
 			log_error("Failed at step: ExitCamera with error %d", r);
 		}
 		log_info("Disconnected camera %s with HID %d", c->name ? : "(unnamed)", c->hid);
-		chstate(c, c->state, CAM_INACTIVE);
+		chstate(c, CAM_INACTIVE);
 		free(c->name);
 		free(c);
 	}
